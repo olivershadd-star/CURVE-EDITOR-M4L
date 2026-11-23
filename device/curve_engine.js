@@ -939,6 +939,16 @@ function viewArgs(i, m) {
         l.params.bars, l.params.offset, encodeURIComponent(l.name), l.manual ? 1 : 0];
 }
 
+// onglets : seuls les reglages de la ligne affichee sont visibles (les 8 jeux sont superposes)
+function showLane(k, visible) {
+    var j, o;
+    for (j = 0; j < PARAM_NAMES.length + 1; j++) {
+        o = mobj("p" + k + "_" + (j < PARAM_NAMES.length ? PARAM_NAMES[j] : "x"));
+        if (j === PARAM_NAMES.length) { o = mobj("man" + k); }
+        if (o) { try { o.hidden = !visible; } catch (e) { /* ignore */ } }
+    }
+}
+
 var io = {
     cc: function (ch, cc, v) { outlet(2, ch); outlet(1, cc); outlet(0, v); },
     setParam: function (i, key, v) { sendTo(mobj("p" + i + "_" + key), ["set", v]); },
@@ -948,7 +958,10 @@ var io = {
     },
     selected: function (i) {
         var k;
-        for (k = 0; k < LANE_COUNT; k++) { sendTo(mobj("sel" + k), ["set", k === i ? 1 : 0]); }
+        for (k = 0; k < LANE_COUNT; k++) {
+            sendTo(mobj("sel" + k), ["set", k === i ? 1 : 0]);
+            showLane(k, k === i);
+        }
     },
     manual: function (i, flag) { sendTo(mobj("man" + i), ["text", flag ? "MAN" : "AUTO"]); },
     status: function (text) { sendTo(mobj("status"), ["set", text]); }

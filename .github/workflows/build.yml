@@ -1,0 +1,26 @@
+name: Appareil Max for Live
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Tests, construction et controles
+        run: tests/run_all.sh
+      - name: Archive prete a telecharger
+        run: |
+          mkdir -p dist/CurveEditor-M4L
+          cp device/* README.md FEUILLE_TEST_LIVE_FR.md dist/CurveEditor-M4L/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CurveEditor-M4L
+          path: dist

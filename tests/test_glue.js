@@ -49,6 +49,16 @@ test("messages de reglage : la ligne 3 envoie un CC sur le bon canal / numero, v
     assert.strictEqual(out[0][1], 16); assert.strictEqual(out[1][1], 22);
 });
 
+test("onglets : seuls les reglages de la ligne choisie sont visibles", () => {
+    const { G, objects } = setup();
+    G.select(3);
+    assert.strictEqual(objects.p3_min.hidden, false); assert.strictEqual(objects.man3.hidden, false);
+    assert.strictEqual(objects.p2_min.hidden, true); assert.strictEqual(objects.man2.hidden, true);
+    assert.strictEqual(objects.p7_on.hidden, true);
+    G.select(7);
+    assert.strictEqual(objects.p3_cc.hidden, true); assert.strictEqual(objects.p7_cc.hidden, false);
+});
+
 test("bang : suit le transport et le temps de Live, et seulement a la lecture", () => {
     const { G, out, live } = setup();
     G.p(0, "on", 1); G.p(0, "smooth", 0); G.p(0, "bars", 1);

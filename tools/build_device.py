@@ -207,67 +207,69 @@ def build():
     top.link(recv, 0, engine, 0)
 
     # ---------- editeur de courbe ----------
-    ED_X, ED_Y, ED_W, ED_H = 344, 3, 652, 112
+    ED_X, ED_Y, ED_W, ED_H = 4, 20, 992, 86
     editor = top.add("jsui", rect=[700, 200, 300, 100], present=[ED_X, ED_Y, ED_W, ED_H], inl=1, outl=2,
                      outtypes=["", ""], filename="curve_ui.js", varname="editor")
 
-    # ---------- tableau des 8 lignes ----------
-    cols = [("sel", 16), ("on", 16), ("cc", 28), ("channel", 22), ("min", 28), ("max", 28), ("bars", 28),
-            ("offset", 28), ("smooth", 30), ("depth", 28), ("value", 28), ("man", 32)]
-    heads = {"sel": "", "on": "On", "cc": "CC", "channel": "Ch", "min": "Min", "max": "Max", "bars": "Mes.",
-             "offset": "Phase", "smooth": "Lisse", "depth": "Prof.", "value": "Val.", "man": ""}
-    spec = {  # cle : (nom, type 0 = float 1 = int, min, max, unite, largeur de lecture)
-        "cc": ("CC", 1, 0, 127, 0), "channel": ("Canal", 1, 1, 16, 0), "min": ("Min", 0, 0, 100, 5),
-        "max": ("Max", 0, 0, 100, 5), "bars": ("Mesures", 0, 0.25, 32, 1), "offset": ("Phase", 0, 0, 100, 5),
-        "smooth": ("Lissage", 0, 0, 500, 2), "depth": ("Profondeur", 0, 0, 100, 5),
-        "value": ("Valeur", 1, 0, 127, 0)}
-    initial = {"cc": None, "channel": 16, "min": 0, "max": 100, "bars": 4, "offset": 0, "smooth": 20,
-               "depth": 100, "value": 64}
-    x = 4
-    xs = {}
-    for key, w in cols:
-        xs[key] = (x, w)
-        x += w + 2
-    assert x - 2 <= ED_X - 2, "tableau trop large : %d" % x
-    Y0, PITCH, RH = 18, 16, 15
-    for key, w in cols:
-        if heads[key]:
-            top.comment(heads[key], [600, 20, 40, 18], present=[xs[key][0], 2, w + 4, 14], size=8.0,
-                        textcolor=[0.75, 0.75, 0.8, 1.0])
+    # ---------- onglets (un par ligne) et reglages de la ligne affichee ----------
+    # Les 8 jeux de reglages sont superposes au meme endroit ; le JS cache ceux des autres lignes (hidden).
+    TAB_W = 123
     for i in range(LANES):
-        y = Y0 + i * PITCH
-        px = lambda k: [xs[k][0], y, xs[k][1], RH]
-        # selection de la ligne (affiche en "allume" la ligne editee)
-        sel = top.add("live.text", rect=[20 + i * 40, 320, 30, 18], present=px("sel"), inl=1, outl=2,
-                      outtypes=["", "float"], varname="sel%d" % i, text=str(i + 1), texton=str(i + 1), mode=1,
-                      parameter_enable=0, fontsize=8.0, bgcolor=[0.2, 0.2, 0.24, 1.0],
-                      bgoncolor=colour(COLOURS[i]), textcolor=[1, 1, 1, 1], textoncolor=[0, 0, 0, 1])
+        sel = top.add("live.text", rect=[20 + i * 40, 320, 30, 18], present=[4 + i * (TAB_W + 1), 2, TAB_W, 16],
+                      inl=1, outl=2, outtypes=["", "float"], varname="sel%d" % i, text="Courbe %d" % (i + 1),
+                      texton="Courbe %d" % (i + 1), mode=1, parameter_enable=0, fontsize=10.0,
+                      bgcolor=[0.2, 0.2, 0.24, 1.0], bgoncolor=colour(COLOURS[i]), textcolor=[1, 1, 1, 1],
+                      textoncolor=[0, 0, 0, 1])
         ss = top.obj("sel 1", [20 + i * 40, 345, 30, 22], outl=2, outtypes=["bang", ""])
         sm = top.msg("select %d" % i, [20 + i * 40, 370, 60, 22])
         top.link(sel, 0, ss, 0)
         top.link(ss, 0, sm, 0)
         top.link(sm, 0, engine, 0)
-        # reglages
-        on = top.add("live.toggle", rect=[20 + i * 40, 400, 20, 20], present=px("on"), inl=1, outl=1,
+
+    spec = {  # cle : (nom, type 0 = float 1 = int, min, max, unite, largeur)
+        "channel": ("Canal", 1, 1, 16, 0, 26), "cc": ("CC", 1, 0, 127, 0, 34), "min": ("Min", 0, 0, 100, 5, 44),
+        "max": ("Max", 0, 0, 100, 5, 44), "bars": ("Mesures", 0, 0.25, 32, 1, 44), "offset": ("Phase", 0, 0, 100, 5, 44),
+        "smooth": ("Lissage", 0, 0, 500, 2, 46), "depth": ("Profondeur", 0, 0, 100, 5, 44),
+        "value": ("Valeur", 1, 0, 127, 0, 36)}
+    labels = {"on": "On", "channel": "Canal", "cc": "CC", "min": "Min", "max": "Max", "bars": "Mesures",
+              "offset": "Phase", "smooth": "Lissage", "depth": "Prof.", "value": "Valeur"}
+    label_w = {"on": 18, "channel": 30, "cc": 18, "min": 22, "max": 24, "bars": 44, "offset": 32, "smooth": 38,
+               "depth": 30, "value": 34}
+    order = ["on", "channel", "cc", "min", "max", "bars", "offset", "smooth", "depth", "value"]
+    initial = {"channel": 16, "min": 0, "max": 100, "bars": 4, "offset": 0, "smooth": 20, "depth": 100, "value": 64}
+    PY, PH = 108, 15
+    x = 4
+    pos = {}
+    for key in order:
+        top.comment(labels[key], [600, 20, 40, 18], present=[x, PY, label_w[key], PH], size=9.0,
+                    textcolor=[0.75, 0.75, 0.8, 1.0])
+        x += label_w[key]
+        w = 16 if key == "on" else spec[key][5]
+        pos[key] = [x, PY, w, PH]
+        x += w + 8
+    pos["man"] = [x, PY, 46, PH]
+    assert x + 46 <= 996, "reglages trop larges : %d" % x
+    for i in range(LANES):
+        on = top.add("live.toggle", rect=[20 + i * 40, 400, 20, 20], present=pos["on"], inl=1, outl=1,
                      outtypes=[""], varname="p%d_on" % i, activebgcolor=colour(COLOURS[i]),
                      **live_attrs("L%d On" % (i + 1), "On", 2, 0, 1, 0, 0))
         pr = top.obj("prepend p %d on" % i, [20 + i * 40, 430, 90, 22])
         top.link(on, 0, pr, 0)
         top.link(pr, 0, engine, 0)
-        for key, _w in cols:
-            if key not in spec:
+        for key in order:
+            if key == "on":
                 continue
-            name, kind, lo, hi, unit = spec[key]
+            name, kind, lo, hi, unit, _w = spec[key]
             ini = (20 + i) if key == "cc" else initial[key]
-            num = top.add("live.numbox", rect=[20 + i * 40, 460 + 0, 40, 15], present=px(key), inl=1, outl=2,
-                          outtypes=["", "float"], varname="p%d_%s" % (i, key), fontsize=8.0,
+            num = top.add("live.numbox", rect=[20 + i * 40, 460, 40, 15], present=pos[key], inl=1, outl=2,
+                          outtypes=["", "float"], varname="p%d_%s" % (i, key), fontsize=9.0,
                           **live_attrs("L%d %s" % (i + 1, name), name, kind, lo, hi, ini, unit))
             pr = top.obj("prepend p %d %s" % (i, key), [20 + i * 40, 490, 110, 22])
             top.link(num, 0, pr, 0)
             top.link(pr, 0, engine, 0)
-        man = top.add("live.text", rect=[20 + i * 40, 520, 30, 18], present=px("man"), inl=1, outl=2,
+        man = top.add("live.text", rect=[20 + i * 40, 520, 30, 18], present=pos["man"], inl=1, outl=2,
                       outtypes=["", "float"], varname="man%d" % i, text="AUTO", mode=0, parameter_enable=0,
-                      fontsize=8.0, bgcolor=[0.2, 0.2, 0.24, 1.0], textcolor=[0.8, 0.9, 1, 1])
+                      fontsize=9.0, bgcolor=[0.2, 0.2, 0.24, 1.0], textcolor=[0.8, 0.9, 1, 1])
         ms = top.obj("sel 1", [20 + i * 40, 545, 30, 22], outl=2, outtypes=["bang", ""])
         mm = top.msg("resume %d" % i, [20 + i * 40, 570, 70, 22])
         top.link(man, 0, ms, 0)
@@ -310,7 +312,7 @@ def build():
         top.link(pp, 0, target, 0)
         return m
 
-    R1, R2, H = 118, 137, 17
+    R1, R2, H = 124, 141, 17
     x = ED_X
     tool_button("Libre", "free", [x, R1, 40, H]); x += 42
     tool_button("Points", "points", [x, R1, 44, H]); x += 46
@@ -374,7 +376,7 @@ def build():
     top.link(lms, 0, engine, 0)
 
     # ---------- etat ----------
-    top.comment("Curve Editor M4L - ANKS Labs", [20, 800, 200, 20], present=[ED_X, 154, 200, 13], size=8.0,
+    top.comment("Curve Editor M4L - ANKS Labs", [20, 800, 200, 20], present=[4, 158, 400, 11], size=8.0,
                 varname="status", textcolor=[0.85, 0.85, 0.9, 1.0])
 
     # ---------- fenetre Outils ----------
