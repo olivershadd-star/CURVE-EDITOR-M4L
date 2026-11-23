@@ -126,6 +126,7 @@ test("barre d'outils : boutons, menu de formes, quantites de variation / lissage
     const { G } = setup();
     G.select(1);
     G.btn("lock", 0); assert.strictEqual(G.model.lanes[1].locked, false, "valeur 0 = relachement : ignore");
+    G.btn("lock"); assert.strictEqual(G.model.lanes[1].locked, true, "sans valeur (bang) : declenche"); G.btn("lock", 1);
     G.btn("lock", 1); assert.strictEqual(G.model.lanes[1].locked, true); G.btn("lock", 1);
     G.shape_preset(3); assert.ok(Math.abs(G.model.lanes[1].curve.y[0] - 1) < 1e-9);
     G.btn("points", 1); assert.strictEqual(G.model.lanes[1].pointMode, true);

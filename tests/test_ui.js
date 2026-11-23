@@ -64,13 +64,13 @@ test("dessin libre : glisser trace la courbe, le relachement l'envoie au moteur"
     assert.ok(Math.abs(d.y[0] - 0) < 0.01, "le reste est inchange");
 });
 
-test("aimantation a la grille et Maj la desactive", () => {
+test("trait libre : continu, sans aimantation (seuls les pinceaux et les points s'aimantent)", () => {
     const { U, sent } = setup();
     U.view(0, U.encodeCurve(U.preset(1, 4)), "-", 0, 0, 4, 0, "L", 0);
     U.onclick(px(0.26), py(0.51), 1, 0, 0, 0, 0, 0);
     U.ondrag(px(0.26), py(0.51), 0, 0, 0, 0, 0, 0);
     let d = U.decodeCurve(sent[0][2], 4);
-    assert.ok(Math.abs(d.y[Math.round(0.25 * 2048)] - 0.5) < 0.01, "x 0.26 -> 0.25 et y 0.51 -> 0.5 : " + d.y[512]);
+    assert.ok(Math.abs(d.y[Math.round(0.26 * 2048)] - 0.51) < 0.01, "pas d'escalier en trait libre");
     U.onclick(px(0.26), py(0.51), 1, 0, 1, 0, 0, 0);
     U.ondrag(px(0.26), py(0.51), 0, 0, 1, 0, 0, 0);
     d = U.decodeCurve(sent[1][2], 4);

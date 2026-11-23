@@ -1049,7 +1049,7 @@ function ui_points(lane, str) {
 
 // ---------- boutons de la barre d'outils ----------
 function btn(name, value) {
-    if (Number(value) !== 1) { return; }
+    if (value !== undefined && Number(value) !== 1) { return; }
     var i = model.selected, l = model.lanes[i];
     switch (String(name)) {
         case "free": model.setPointMode(i, false); break;

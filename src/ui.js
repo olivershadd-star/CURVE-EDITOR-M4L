@@ -239,7 +239,7 @@ function release() {
 
 // dessin libre et pinceaux
 function draw(px, py, shift) {
-    var pt = toPoint(px, py, shift), xi = clamp(Math.round(pt.x * RES), 0, RES), n, t, v, cell, begin, end;
+    var pt = toPoint(px, py, shift || !brush), xi = clamp(Math.round(pt.x * RES), 0, RES), n, t, v, cell, begin, end;
     if (brush) {
         cell = Math.min(grid - 1, Math.floor(pt.x * grid));
         begin = Math.floor(cell * RES / grid); end = Math.floor((cell + 1) * RES / grid);

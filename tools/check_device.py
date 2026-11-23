@@ -106,7 +106,7 @@ def main():
         t = b["box"].get("text", "")
         if b["box"]["maxclass"] == "message":
             head = t.split()[0]
-            if head not in (to_engine | ui_fns | {"1"}):
+            if head not in (to_engine | ui_fns | {"1", "set"}):
                 err("message inconnu : %s" % t)
         m = re.match(r"prepend (\w+)", t)
         if m and m.group(1) not in (to_engine | ui_fns):

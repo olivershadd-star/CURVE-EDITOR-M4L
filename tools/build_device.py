@@ -134,11 +134,12 @@ def build_tools_patch():
         b = t.add("live.text", rect=rect, present=present, inl=1, outl=2, outtypes=["", "float"],
                   text=label, mode=0, parameter_enable=0, fontsize=10.0, bgcolor=[0.22, 0.22, 0.26, 1.0],
                   bgoncolor=[0.4, 0.5, 0.7, 1.0], textcolor=[1, 1, 1, 1], textoncolor=[1, 1, 1, 1])
-        sel = t.obj("sel 1", [rect[0], rect[1] + 24, 40, 22], outl=2, outtypes=["bang", ""])
+        sel = t.obj("route 1 bang", [rect[0], rect[1] + 24, 70, 22], outl=3, outtypes=["", "", ""])
         fan = t.obj("t b b", [rect[0], rect[1] + 48, 40, 22], outl=2, outtypes=["bang", "bang"])
         m = t.msg("tools %s" % cmd, [rect[0], rect[1] + 72, 120, 22])
         t.link(b, 0, sel, 0)
         t.link(sel, 0, fan, 0)
+        t.link(sel, 1, fan, 0)
         if edit:
             bg = t.msg("bang", [rect[0] + 60, rect[1] + 72, 40, 22])
             t.link(fan, 1, bg, 0)
@@ -207,12 +208,19 @@ def build():
     top.link(recv, 0, engine, 0)
 
     # ---------- editeur de courbe ----------
-    ED_X, ED_Y, ED_W, ED_H = 4, 20, 992, 86
+    ED_X, ED_Y, ED_W, ED_H = 4, 39, 700, 104
     editor = top.add("jsui", rect=[700, 200, 300, 100], present=[ED_X, ED_Y, ED_W, ED_H], inl=1, outl=2,
                      outtypes=["", ""], filename="curve_ui.js", varname="editor")
 
-    # ---------- onglets (un par ligne) et reglages de la ligne affichee ----------
-    # Les 8 jeux de reglages sont superposes au meme endroit ; le JS cache ceux des autres lignes (hidden).
+    # ---------- onglets (un par ligne) ----------
+    def trig(src, dst, dst_inlet=0, outlet=0):
+        """Declenche dst quand src envoie 1 ou bang (selon la version, un bouton live.text sort l'un ou l'autre)."""
+        r = top.obj("route 1 bang", [20, 600, 70, 22], outl=3, outtypes=["", "", ""])
+        top.link(src, outlet, r, 0)
+        top.link(r, 0, dst, dst_inlet)
+        top.link(r, 1, dst, dst_inlet)
+        return r
+
     TAB_W = 123
     for i in range(LANES):
         sel = top.add("live.text", rect=[20 + i * 40, 320, 30, 18], present=[4 + i * (TAB_W + 1), 2, TAB_W, 16],
@@ -220,35 +228,32 @@ def build():
                       texton="Courbe %d" % (i + 1), mode=1, parameter_enable=0, fontsize=10.0,
                       bgcolor=[0.2, 0.2, 0.24, 1.0], bgoncolor=colour(COLOURS[i]), textcolor=[1, 1, 1, 1],
                       textoncolor=[0, 0, 0, 1])
-        ss = top.obj("sel 1", [20 + i * 40, 345, 30, 22], outl=2, outtypes=["bang", ""])
         sm = top.msg("select %d" % i, [20 + i * 40, 370, 60, 22])
-        top.link(sel, 0, ss, 0)
-        top.link(ss, 0, sm, 0)
+        trig(sel, sm)
         top.link(sm, 0, engine, 0)
 
-    spec = {  # cle : (nom, type 0 = float 1 = int, min, max, unite, largeur)
-        "channel": ("Canal", 1, 1, 16, 0, 26), "cc": ("CC", 1, 0, 127, 0, 34), "min": ("Min", 0, 0, 100, 5, 44),
-        "max": ("Max", 0, 0, 100, 5, 44), "bars": ("Mesures", 0, 0.25, 32, 1, 44), "offset": ("Phase", 0, 0, 100, 5, 44),
-        "smooth": ("Lissage", 0, 0, 500, 2, 46), "depth": ("Profondeur", 0, 0, 100, 5, 44),
-        "value": ("Valeur", 1, 0, 127, 0, 36)}
+    # ---------- reglages de la ligne affichee (colonne de droite) ----------
+    # Les 8 jeux de reglages sont superposes ; le JS cache ceux des autres lignes (hidden).
+    spec = {  # cle : (nom, type 0 = float 1 = int, min, max, unite)
+        "channel": ("Canal", 1, 1, 16, 0), "cc": ("CC", 1, 0, 127, 0), "min": ("Min", 0, 0, 100, 5),
+        "max": ("Max", 0, 0, 100, 5), "bars": ("Mesures", 1, 1, 16, 0), "offset": ("Phase", 0, 0, 100, 5),
+        "smooth": ("Lissage", 0, 0, 500, 2), "depth": ("Profondeur", 0, 0, 100, 5), "value": ("Valeur", 1, 0, 127, 0)}
     labels = {"on": "On", "channel": "Canal", "cc": "CC", "min": "Min", "max": "Max", "bars": "Mesures",
-              "offset": "Phase", "smooth": "Lissage", "depth": "Prof.", "value": "Valeur"}
-    label_w = {"on": 18, "channel": 30, "cc": 18, "min": 22, "max": 24, "bars": 44, "offset": 32, "smooth": 38,
-               "depth": 30, "value": 34}
-    order = ["on", "channel", "cc", "min", "max", "bars", "offset", "smooth", "depth", "value"]
+              "offset": "Phase", "smooth": "Lissage", "depth": "Profond.", "value": "Valeur"}
     initial = {"channel": 16, "min": 0, "max": 100, "bars": 4, "offset": 0, "smooth": 20, "depth": 100, "value": 64}
-    PY, PH = 108, 15
-    x = 4
+    col = [["on", "channel", "cc", "min", "max"], ["bars", "offset", "smooth", "depth", "value"]]
+    LX = [712, 856]          # etiquettes
+    CX = [768, 916]          # controles
+    CW = 52
+    PY0, PITCH, PH = 39, 17, 15
     pos = {}
-    for key in order:
-        top.comment(labels[key], [600, 20, 40, 18], present=[x, PY, label_w[key], PH], size=9.0,
-                    textcolor=[0.75, 0.75, 0.8, 1.0])
-        x += label_w[key]
-        w = 16 if key == "on" else spec[key][5]
-        pos[key] = [x, PY, w, PH]
-        x += w + 8
-    pos["man"] = [x, PY, 46, PH]
-    assert x + 46 <= 996, "reglages trop larges : %d" % x
+    for c in range(2):
+        for r, key in enumerate(col[c]):
+            y = PY0 + r * PITCH
+            top.comment(labels[key], [600, 20, 40, 18], present=[LX[c], y, CX[c] - LX[c], PH], size=9.0,
+                        textcolor=[0.75, 0.75, 0.8, 1.0])
+            pos[key] = [CX[c], y, 16 if key == "on" else CW, PH]
+    pos["man"] = [LX[0], PY0 + 5 * PITCH, CX[0] + CW - LX[0], PH]
     for i in range(LANES):
         on = top.add("live.toggle", rect=[20 + i * 40, 400, 20, 20], present=pos["on"], inl=1, outl=1,
                      outtypes=[""], varname="p%d_on" % i, activebgcolor=colour(COLOURS[i]),
@@ -256,10 +261,8 @@ def build():
         pr = top.obj("prepend p %d on" % i, [20 + i * 40, 430, 90, 22])
         top.link(on, 0, pr, 0)
         top.link(pr, 0, engine, 0)
-        for key in order:
-            if key == "on":
-                continue
-            name, kind, lo, hi, unit, _w = spec[key]
+        for key in ("channel", "cc", "min", "max", "bars", "offset", "smooth", "depth", "value"):
+            name, kind, lo, hi, unit = spec[key]
             ini = (20 + i) if key == "cc" else initial[key]
             num = top.add("live.numbox", rect=[20 + i * 40, 460, 40, 15], present=pos[key], inl=1, outl=2,
                           outtypes=["", "float"], varname="p%d_%s" % (i, key), fontsize=9.0,
@@ -270,33 +273,21 @@ def build():
         man = top.add("live.text", rect=[20 + i * 40, 520, 30, 18], present=pos["man"], inl=1, outl=2,
                       outtypes=["", "float"], varname="man%d" % i, text="AUTO", mode=0, parameter_enable=0,
                       fontsize=9.0, bgcolor=[0.2, 0.2, 0.24, 1.0], textcolor=[0.8, 0.9, 1, 1])
-        ms = top.obj("sel 1", [20 + i * 40, 545, 30, 22], outl=2, outtypes=["bang", ""])
         mm = top.msg("resume %d" % i, [20 + i * 40, 570, 70, 22])
-        top.link(man, 0, ms, 0)
-        top.link(ms, 0, mm, 0)
+        trig(man, mm)
         top.link(mm, 0, engine, 0)
 
-    # ---------- barre d'outils ----------
+    # ---------- barre d'outils (une rangee sous les onglets) ----------
     BG = [0.2, 0.2, 0.24, 1.0]
+    R1, H = 20, 17
 
-    def tool_button(label, name, present, w_hint=None):
+    def tool_button(label, name, present):
         b = top.add("live.text", rect=[20, 600, 50, 18], present=present, inl=1, outl=2, outtypes=["", "float"],
                     text=label, mode=0, parameter_enable=0, fontsize=9.0, bgcolor=BG, bgoncolor=[0.4, 0.5, 0.7, 1.0],
                     textcolor=[1, 1, 1, 1], textoncolor=[1, 1, 1, 1])
-        pp = top.obj("prepend btn %s" % name, [20, 625, 100, 22])
-        top.link(b, 0, pp, 0)
-        top.link(pp, 0, engine, 0)
-        return b
-
-    def editor_button(label, message, present):
-        b = top.add("live.text", rect=[20, 650, 50, 18], present=present, inl=1, outl=2, outtypes=["", "float"],
-                    text=label, mode=0, parameter_enable=0, fontsize=9.0, bgcolor=BG, bgoncolor=[0.4, 0.5, 0.7, 1.0],
-                    textcolor=[1, 1, 1, 1], textoncolor=[1, 1, 1, 1])
-        s = top.obj("sel 1", [20, 675, 30, 22], outl=2, outtypes=["bang", ""])
-        m = top.msg(message, [20, 700, 80, 22])
-        top.link(b, 0, s, 0)
-        top.link(s, 0, m, 0)
-        top.link(m, 0, editor, 0)
+        m = top.msg("btn %s 1" % name, [20, 650, 90, 22])
+        trig(b, m)
+        top.link(m, 0, engine, 0)
         return b
 
     def menu(items, varname, present, target, prefix):
@@ -307,76 +298,82 @@ def build():
             flat.append(it)
         m = top.add("umenu", rect=[300, 600, 90, 22], present=present, inl=1, outl=3, outtypes=["int", "", ""],
                     varname=varname, items=flat, fontsize=9.0, bgcolor=BG, textcolor=[1, 1, 1, 1])
-        pp = top.obj("prepend %s" % prefix, [300, 625, 110, 22])
-        top.link(m, 0, pp, 0)
-        top.link(pp, 0, target, 0)
+        if prefix:
+            pp = top.obj("prepend %s" % prefix, [300, 625, 110, 22])
+            top.link(m, 0, pp, 0)
+            top.link(pp, 0, target, 0)
         return m
 
-    R1, R2, H = 124, 141, 17
-    x = ED_X
+    x = 4
     tool_button("Libre", "free", [x, R1, 40, H]); x += 42
     tool_button("Points", "points", [x, R1, 44, H]); x += 46
     shape = menu(["Forme...", "Vague", "Rampe +", "Rampe -", "Triangle", "Douce", "Paliers"], "shapemenu",
-                 [x, R1, 72, H], engine, "shape_preset"); x += 74
-    grid = menu(["Grille 4", "Grille 8", "Grille 16", "Grille 32", "Grille 64"], "gridmenu",
-                [x, R1, 66, H], editor, "setgridindex"); x += 68
+                 [x, R1, 76, H], engine, "shape_preset"); x += 78
     brush = menu(["Trait libre", "Motif rampe", "Motif triangle", "Motif sinus"], "brushmenu",
-                 [x, R1, 82, H], editor, "setbrush"); x += 84
-    snap = top.add("live.text", rect=[300, 660, 50, 18], present=[x, R1, 52, H], inl=1, outl=2,
+                 [x, R1, 90, H], editor, "setbrush"); x += 92
+    snap = top.add("live.text", rect=[300, 660, 50, 18], present=[x, R1, 56, H], inl=1, outl=2,
                    outtypes=["", "float"], varname="snap", text="Aimant", texton="Aimant", mode=1,
                    parameter_enable=0, fontsize=9.0, bgcolor=BG, bgoncolor=[0.3, 0.6, 0.5, 1.0],
                    textcolor=[1, 1, 1, 1], textoncolor=[1, 1, 1, 1])
     sp = top.obj("prepend setsnap", [300, 685, 100, 22])
     top.link(snap, 0, sp, 0)
     top.link(sp, 0, editor, 0)
-    x += 54
+    x += 58
+    grid = menu(["Grille 4", "Grille 8", "Grille 16", "Grille 32", "Grille 64"], "gridmenu",
+                [x, R1, 70, H], editor, "setgridindex"); x += 72
     seg = menu(["Courbe", "Courbe en S", "Palier", "Escalier", "Onde", "Triangle", "Impulsion"], "segmenu",
-               [x, R1, 78, H], editor, "shape_seg"); x += 80
-    editor_button("Étirer -", "stretch -1", [x, R1, 44, H]); x += 46
-    editor_button("Étirer +", "stretch 1", [x, R1, 44, H]); x += 46
-    editor_button("Pente -", "tilt -1", [x, R1, 42, H]); x += 44
-    editor_button("Pente +", "tilt 1", [x, R1, 42, H]); x += 44
-    assert x <= ED_X + ED_W + 4, "ligne 1 trop large : %d" % x
+               [x, R1, 82, H], editor, "shape_seg"); x += 84
 
-    x = ED_X
-    for label, name, w in [("Copier", "copy", 48), ("Coller", "paste", 48), ("Annuler", "undo", 52),
-                           ("Verrou", "lock", 48), ("Inverser", "invert", 54)]:
-        tool_button(label, name, [x, R2, w, H]); x += w + 2
-    tool_button("Varier", "vary", [x, R2, 46, H]); x += 48
-    vary = top.add("live.numbox", rect=[300, 730, 40, 15], present=[x, R2, 34, H], inl=1, outl=2,
+    # menu "Actions" : copier, coller, annuler, verrouiller, inverser, lisser, etirer, pente
+    actions = menu(["Actions...", "Copier", "Coller", "Annuler", "Verrouiller", "Inverser", "Lisser", "Étirer +",
+                    "Étirer -", "Pente -", "Pente +"], "actmenu", [x, R1, 84, H], None, None)
+    x += 86
+    tb = top.obj("t i b", [300, 700, 40, 22], outl=2, outtypes=["int", "bang"])
+    back = top.msg("set 0", [350, 725, 40, 22])
+    sw = top.obj("sel 1 2 3 4 5 6 7 8 9 10", [300, 750, 190, 22], outl=11, outtypes=[""] * 11)
+    top.link(actions, 0, tb, 0)
+    top.link(tb, 1, back, 0)
+    top.link(back, 0, actions, 0)
+    top.link(tb, 0, sw, 0)
+    acts = [("btn copy 1", engine), ("btn paste 1", engine), ("btn undo 1", engine), ("btn lock 1", engine),
+            ("btn invert 1", engine), ("btn smooth 1", engine), ("stretch 1", editor), ("stretch -1", editor),
+            ("tilt -1", editor), ("tilt 1", editor)]
+    for k, (text, dst) in enumerate(acts):
+        mm = top.msg(text, [300 + k * 70, 780, 70, 22])
+        top.link(sw, k, mm, 0)
+        top.link(mm, 0, dst, 0)
+
+    tool_button("Varier", "vary", [x, R1, 46, H]); x += 48
+    vary = top.add("live.numbox", rect=[300, 730, 40, 15], present=[x, R1, 34, H], inl=1, outl=2,
                    outtypes=["", "float"], varname="vary_amount", fontsize=8.0,
                    **live_attrs("Variation %", "Var", 0, 0, 100, 5, 5, enable=0))
     vp = top.obj("prepend vary_amount", [300, 755, 110, 22])
     top.link(vary, 0, vp, 0)
     top.link(vp, 0, engine, 0)
     x += 36
-    tool_button("Lisser", "smooth", [x, R2, 44, H]); x += 46
-    smooth = top.add("live.numbox", rect=[420, 730, 40, 15], present=[x, R2, 34, H], inl=1, outl=2,
+    tool_button("Lisser", "smooth", [x, R1, 44, H]); x += 46
+    smooth = top.add("live.numbox", rect=[420, 730, 40, 15], present=[x, R1, 34, H], inl=1, outl=2,
                      outtypes=["", "float"], varname="smooth_amount", fontsize=8.0,
                      **live_attrs("Lissage %", "Liss", 0, 0, 100, 30, 5, enable=0))
     sp2 = top.obj("prepend smooth_amount", [420, 755, 120, 22])
     top.link(smooth, 0, sp2, 0)
     top.link(sp2, 0, engine, 0)
     x += 36
-    tool_button("Outils...", "tools", [x, R2, 56, H]); x += 58
-    assert x <= ED_X + ED_W + 4, "ligne 2 trop large : %d" % x
+    tool_button("Outils...", "tools", [x, R1, 56, H]); x += 58
+    assert x <= 996, "barre d'outils trop large : %d" % x
 
     # valeurs affichees au chargement (sans sortie)
-    lm = top.obj("loadmess set 2", [500, 600, 90, 22])
-    top.link(lm, 0, grid, 0)
-    lm2 = top.obj("loadmess set 1", [500, 630, 90, 22])
-    top.link(lm2, 0, snap, 0)
-    lm3 = top.obj("loadmess set 5", [500, 660, 90, 22])
-    top.link(lm3, 0, vary, 0)
-    lm4 = top.obj("loadmess set 30", [500, 690, 90, 22])
-    top.link(lm4, 0, smooth, 0)
+    for text, dst in [("loadmess set 2", grid), ("loadmess set 1", snap), ("loadmess set 5", vary),
+                      ("loadmess set 30", smooth)]:
+        lm = top.obj(text, [500, 600, 90, 22])
+        top.link(lm, 0, dst, 0)
     lmv = top.obj("loadmess vary_amount 5", [500, 720, 130, 22])
     lms = top.obj("loadmess smooth_amount 30", [500, 750, 150, 22])
     top.link(lmv, 0, engine, 0)
     top.link(lms, 0, engine, 0)
 
     # ---------- etat ----------
-    top.comment("Curve Editor M4L - ANKS Labs", [20, 800, 200, 20], present=[4, 158, 400, 11], size=8.0,
+    top.comment("Curve Editor M4L - ANKS Labs", [20, 800, 200, 20], present=[4, 155, 700, 12], size=8.0,
                 varname="status", textcolor=[0.85, 0.85, 0.9, 1.0])
 
     # ---------- fenetre Outils ----------
