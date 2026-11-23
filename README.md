@@ -1,9 +1,9 @@
 <div align="center">
 
 # ANKS LABS / CURVE EDITOR M4L
-### MAX FOR LIVE · AUTOMATION CONCEPT · ABLETON LIVE
+### MAX FOR LIVE · EFFET MIDI · ABLETON LIVE 12
 
-![Status](https://img.shields.io/badge/STATUS-PLANNING_REPOSITORY-EF343E?style=for-the-badge&labelColor=10151E)
+![Status](https://img.shields.io/badge/STATUS-PROTOTYPE_NON_TESTE_DANS_LIVE-EF343E?style=for-the-badge&labelColor=10151E)
 ![ANKS Labs](https://img.shields.io/badge/ANKS_LABS-AUDIO_DEVELOPMENT-19B9FF?style=for-the-badge&labelColor=10151E)
 
 **BUILD. BREAK. REWIRE. LISTEN.**
@@ -12,22 +12,39 @@
 
 ---
 
-## ABOUT THIS PROJECT
+## CE QUE C'EST
 
-**CURVE EDITOR M4L** est un espace de préparation pour un éditeur de courbes intégré à **Ableton Live via Max for Live**.
+**Curve Editor M4L** est la version **Max for Live** de Curve Mini : un vrai **effet MIDI Ableton**. Il se pose avant l'instrument, laisse passer les notes (par exemple celles de MLG) et y ajoute des CC dessinés à la souris, en boucle sur 1 à 16 mesures, synchronisés sur le tempo de Live.
 
-**Direction de recherche :** dessin de courbes, contrôle de macros et paramètres, travail à l'échelle d'une mesure ou de plusieurs mesures, et gestion de plusieurs lignes d'automation dans un flux de production sonore.
+Pourquoi Max for Live : un VST3 ne peut pas être un effet MIDI dans Live. Curve Mini (VST3) doit donc vivre sur sa propre piste et passer par loopMIDI. Ici, l'appareil se place dans la chaîne de la piste de l'instrument, sans routage.
 
-> **Statut : dépôt de préparation.** Aucun outil Max for Live prêt à installer, patch opérationnel ou build validé n'est annoncé ici. Les fonctionnalités décrites sont des objectifs, pas des capacités livrées.
+## ÉTAT
 
-Ce dépôt pourra accueillir une structure de patch, une documentation technique et des versions de test lorsque des travaux concrets seront publiés.
+**Prototype à 2 lignes. Non testé dans Live** : le moteur est vérifié par des tests automatiques avec un faux Live, la structure du patch est contrôlée, mais l'appareil n'a jamais été ouvert dans Max ni dans Live. Voir [`FEUILLE_TEST_LIVE_FR.md`](FEUILLE_TEST_LIVE_FR.md).
 
-## REPOSITORY & COLLABORATION
+| | Prototype |
+|---|---|
+| Lignes | 2 (CC 20 et 21 par défaut) |
+| Courbe | 16 points dessinés à la souris, lecture en boucle avec interpolation |
+| Réglages par ligne | on/off, CC, canal, durée en mesures (1 à 16), min, max |
+| Notes | passent sans modification (`midiin` vers `midiout`) |
+| Synchro | position de Live (`current_song_time`), signature de mesure lue dans Live |
 
-- [Consulter ce dépôt](https://github.com/olivershadd-star/CURVE-EDITOR-M4L)
-- [Profil ANKS Labs](https://github.com/olivershadd-star)
-- Pour échanger sur un prototype, utiliser les Issues si elles sont activées.
+**Pas encore fait** (repris de Curve Mini) : 8 lignes, décalage, lissage, formes et tension des points, sauvegarde du dessin avec le set Live, export MIDI.
+
+## FICHIERS
+
+- `device/CurveEditor-proto.amxd` : l'appareil (effet MIDI)
+- `device/curve_lanes.js` : le moteur, **à garder dans le même dossier que l'appareil**
+- `device/CurveEditor-proto.maxpat` : le même patch en texte, pour un copier-coller de secours
+- `tools/build_device.py` : régénère l'appareil
+- `tests/` : tests du moteur (Node) et contrôle du patch (Python)
+
+```
+node tests/test_curve_lanes.js
+python3 -I tests/check_device.py
+```
 
 ---
 
-*ANKS Labs — indépendant, expérimental. La visibilité d'un dépôt ne constitue pas en soi une licence open source ni une garantie de disponibilité d'un logiciel.*
+*ANKS Labs, indépendant, expérimental.*
