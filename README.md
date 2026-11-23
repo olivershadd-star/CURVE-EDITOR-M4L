@@ -34,9 +34,9 @@ Pourquoi Max for Live : un VST3 ne peut pas être un effet MIDI dans Live. Curve
 
 ## FICHIERS
 
-- `device/CurveEditor-proto.amxd` : l'appareil (effet MIDI)
+- `device/CurveEditor-proto.maxpat` : le patch, à coller dans un Max MIDI Effect vide (chemin sûr)
+- `device/CurveEditor-proto.amxd` : l'appareil généré par script, probablement refusé par Live (en-tête avec somme de contrôle)
 - `device/curve_lanes.js` : le moteur, **à garder dans le même dossier que l'appareil**
-- `device/CurveEditor-proto.maxpat` : le même patch en texte, pour un copier-coller de secours
 - `tools/build_device.py` : régénère l'appareil
 - `tests/` : tests du moteur (Node) et contrôle du patch (Python)
 

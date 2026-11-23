@@ -2,18 +2,19 @@
 
 Ce prototype n'a jamais été ouvert dans Max. Cette feuille sert à voir ce qui marche et à me dire précisément ce qui ne marche pas.
 
-## Installation
+## Installation (chemin principal : copier-coller du patch)
 
-1. Télécharge `device/CurveEditor-proto.amxd` **et** `device/curve_lanes.js` depuis ce dépôt.
-2. Mets les deux **dans le même dossier**, par exemple :
+Le fichier `.amxd` est fabriqué par un script. L'en-tête d'un `.amxd` contient une somme de contrôle, et d'après les forums de Cycling '74 Live refuse les fichiers retouchés à la main : il sera donc **probablement refusé**. Tu peux l'essayer, mais le chemin sûr est celui-ci.
+
+1. Mets `curve_lanes.js` dans un dossier à toi, par exemple
    `Documents\Ableton\User Library\Presets\MIDI Effects\Max MIDI Effect\CurveEditor\`
-3. Dans Live, ouvre le navigateur : User Library, Presets, MIDI Effects, Max MIDI Effect, CurveEditor.
-4. Glisse `CurveEditor-proto` sur la piste de ton instrument (Serum), **avant** l'instrument.
+2. Dans Live, glisse un **Max MIDI Effect** vide (navigateur : MIDI Effects, Max MIDI Effect) sur la piste de ton instrument, **avant** l'instrument. Clique sur le bouton d'édition (Max s'ouvre).
+3. Dans Max, enregistre tout de suite l'appareil sous un nom (par exemple `CurveEditor`) **dans le même dossier que `curve_lanes.js`**.
+4. Ouvre `CurveEditor-proto.maxpat` dans Max (menu Fichier, Ouvrir), Ctrl+A, Ctrl+C.
+5. Reviens à la fenêtre de ton appareil, supprime les deux objets du modèle (`midiin` et `midiout`), Ctrl+V, puis enregistre (Ctrl+S).
+6. Passe en mode présentation (Ctrl+Alt+E) si l'interface ne s'affiche pas comme prévu.
 
-**Si l'appareil ne s'ouvre pas (message d'erreur, appareil vide)** : le fichier `.amxd` est fabriqué à la main et Live peut le refuser. Plan B :
-1. Glisse un « Max MIDI Effect » vide sur la piste, clique sur le bouton d'édition.
-2. Dans Max, ouvre `CurveEditor-proto.maxpat`, sélectionne tout (Ctrl+A), copie, et colle dans la fenêtre de l'appareil vide.
-3. Enregistre l'appareil dans le même dossier que `curve_lanes.js`.
+**Essai direct du `.amxd` (facultatif)** : mets `CurveEditor-proto.amxd` et `curve_lanes.js` dans le même dossier de la User Library et glisse l'appareil sur la piste. S'il s'affiche, tant mieux ; sinon, utilise le chemin ci-dessus.
 
 ## Test
 
