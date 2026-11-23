@@ -2,11 +2,13 @@
 // ANKS Labs
 //
 // Concatene apres core.js et engine.js par tools/build_device.py.
-// Sorties : 0 = valeur CC, 1 = numero de CC, 2 = canal (vers [ctlout], branchees de droite a gauche).
-// Tout le reste passe par patcher.getnamed(<nom de script>) : aucun nom global, donc plusieurs appareils cote a cote.
+// Sorties : 0 = valeur CC, 1 = numero de CC, 2 = canal (vers [ctlout], de droite a gauche),
+//           3 = messages vers la fenetre d'edition et le bandeau ([s ---toui]).
+// Entree  : les messages de la fenetre arrivent par [r ---ui] ; ceux des controles Live par [prepend p ...].
+// Tout le texte envoye a la fenetre est encode (encodeURIComponent) ; "%00" = texte vide.
 
 inlets = 1;
-outlets = 3;
+outlets = 4;
 
 var PARAM_NAMES = ["on", "min", "max", "bars", "offset", "smooth", "depth", "value", "cc", "channel"];
 var liveApi = null, lastTick = 0, tickCount = 0, beatsPerBar = 4, armCountdown = 0, dirtySince = 0;
@@ -18,12 +20,6 @@ function mobj(name) {
     try { o = patcher.getnamed(name); } catch (e) { o = null; }
     return o;
 }
-function subobj(sub, name) {
-    var host = mobj(sub), p = null, o = null;
-    if (!host) { return null; }
-    try { p = host.subpatcher(); o = p ? p.getnamed(name) : null; } catch (e) { o = null; }
-    return o;
-}
 function sendTo(o, args) {
     if (!o) { return; }
     try {
@@ -31,51 +27,54 @@ function sendTo(o, args) {
             case 1: o.message(args[0]); break;
             case 2: o.message(args[0], args[1]); break;
             case 3: o.message(args[0], args[1], args[2]); break;
-            case 4: o.message(args[0], args[1], args[2], args[3]); break;
-            case 5: o.message(args[0], args[1], args[2], args[3], args[4]); break;
-            case 6: o.message(args[0], args[1], args[2], args[3], args[4], args[5]); break;
-            case 7: o.message(args[0], args[1], args[2], args[3], args[4], args[5], args[6]); break;
-            case 8: o.message(args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7]); break;
-            case 9: o.message(args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8]); break;
-            default: o.message(args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8], args[9]); break;
+            default: o.message(args[0], args[1], args[2], args[3]); break;
         }
     } catch (e) { post("Curve Editor : message refuse : " + e + "\n"); }
 }
-function textOf(o, str) { sendTo(o, ["set", encodeURIComponent(str)]); }
-function decodeText(s) { try { return decodeURIComponent(String(s)); } catch (e) { return String(s); } }
-
-function viewArgs(i, m) {
-    var l = m.lanes[i];
-    return ["view", i, encodeCurve(l.curve), encodePoints(l.points) || "-", l.pointMode ? 1 : 0, l.locked ? 1 : 0,
-        l.params.bars, l.params.offset, encodeURIComponent(l.name), l.manual ? 1 : 0];
+function enc(s) { s = String(s); return s.length > 0 ? encodeURIComponent(s) : "%00"; }
+function decodeText(s) {
+    var t;
+    try { t = decodeURIComponent(String(s)); } catch (e) { t = String(s); }
+    return t === "\u0000" ? "" : t;
 }
 
-// onglets : seuls les reglages de la ligne affichee sont visibles (les 8 jeux sont superposes)
-function showLane(k, visible) {
-    var j, o;
-    for (j = 0; j < PARAM_NAMES.length + 1; j++) {
-        o = mobj("p" + k + "_" + (j < PARAM_NAMES.length ? PARAM_NAMES[j] : "x"));
-        if (j === PARAM_NAMES.length) { o = mobj("man" + k); }
-        if (o) { try { o.hidden = !visible; } catch (e) { /* ignore */ } }
+// message vers la fenetre d'edition (et le bandeau)
+function toUi() {
+    var args = [3], k;
+    for (k = 0; k < arguments.length; k++) { args.push(arguments[k]); }
+    outlet.apply(this, args);
+}
+
+// courbe reduite (65 points, 8 bits) pour les onglets
+function miniHex(d) {
+    var out = "", k, v;
+    for (k = 0; k <= 64; k++) {
+        v = Math.round(clamp01(d.y[k * 32]) * 255);
+        out += (v < 16 ? "0" : "") + v.toString(16);
     }
+    return out;
+}
+function viewArgs(i, m) {
+    var l = m.lanes[i];
+    return [i, encodeCurve(l.curve), encodePoints(l.points) || "-", l.pointMode ? 1 : 0, l.locked ? 1 : 0,
+        l.params.bars, l.params.offset, enc(l.name), l.manual ? 1 : 0];
 }
 
 var io = {
     cc: function (ch, cc, v) { outlet(2, ch); outlet(1, cc); outlet(0, v); },
     setParam: function (i, key, v) { sendTo(mobj("p" + i + "_" + key), ["set", v]); },
+    params: function (i, m) {
+        var l = m.lanes[i], p = l.params;
+        toUi("params", i, p.on, p.min, p.max, p.bars, p.offset, p.smooth, p.depth, p.value, l.cc, l.channel);
+    },
     view: function (i, m) {
-        sendTo(mobj("editor"), viewArgs(i, m));
-        fillTools(m);
+        var l = m.lanes[i];
+        toUi("tab", i, miniHex(l.curve), enc(l.name), l.params.on);
+        if (i === m.selected) { toUi.apply(this, ["lane_view"].concat(viewArgs(i, m))); }
     },
-    selected: function (i) {
-        var k;
-        for (k = 0; k < LANE_COUNT; k++) {
-            sendTo(mobj("sel" + k), ["set", k === i ? 1 : 0]);
-            showLane(k, k === i);
-        }
-    },
-    manual: function (i, flag) { sendTo(mobj("man" + i), ["text", flag ? "MAN" : "AUTO"]); },
-    status: function (text) { sendTo(mobj("status"), ["set", text]); }
+    selected: function (i) { toUi("lane_selected", i); fillTexts(model); },
+    manual: function (i, flag) { toUi("lane_manual", i, flag ? 1 : 0); },
+    status: function (text) { toUi("setstatus", enc(text)); sendTo(mobj("status"), ["set", text]); }
 };
 
 var model = createModel(io);
@@ -89,21 +88,28 @@ function p(lane, key, value) {
 }
 function select(i) { model.select(laneOf(i)); }
 
+// ---------- etat complet envoye a la fenetre ----------
+function sync_all() {
+    var k;
+    for (k = 0; k < LANE_COUNT; k++) { io.view(k, model); io.params(k, model); io.manual(k, model.lanes[k].manual); }
+    toUi("lane_selected", model.selected);
+    fillTexts(model);
+    toUi("setstatus", enc(model.status || "Curve Editor M4L : actif."));
+}
+
 // ---------- chargement : restauration de l'etat enregistre avec le set ----------
 function ready() {
     var d = mobj("state");
     armCountdown = 40;                       // le "manuel" n'est arme qu'apres la restauration des reglages
     if (d) { sendTo(d, ["bang"]); }
-    model.select(model.selected);
-    var k;
-    for (k = 0; k < LANE_COUNT; k++) { io.manual(k, model.lanes[k].manual); }
     model.say("Curve Editor M4L : actif.");
+    sync_all();
 }
 function dictionary(name) {
     var d, json;
     try { d = new Dict(String(name)); json = d.get("json"); } catch (e) { return; }
     if (typeof json === "string" && json.length > 0) {
-        if (model.restore(json)) { model.say("Etat restaure."); }
+        if (model.restore(json)) { model.say("Etat restaure."); sync_all(); }
     }
 }
 function saveState() {
@@ -120,7 +126,7 @@ function getLive() {
 }
 function bang() {
     var now = new Date().getTime(), dt = lastTick > 0 ? clamp((now - lastTick) / 1000, 0, 0.25) : 0, a = getLive();
-    var playing = false, beats = 0, n, d, o;
+    var playing = false, beats = 0, n, d;
     lastTick = now;
     if (armCountdown > 0) { armCountdown--; if (armCountdown === 0) { model.armed = true; } }
     if (a) {
@@ -136,29 +142,27 @@ function bang() {
     if (!isFinite(beats)) { playing = false; beats = 0; }
     tickCount++;
     model.tick(playing, beats, beatsPerBar, dt);
-    if (tickCount % 4 === 0) {
-        o = mobj("editor");
-        if (o) { o.message("playhead", playing ? model.playheadPhase(beats, beatsPerBar) : -1); }
-    }
+    if (tickCount % 4 === 0) { toUi("playhead", playing ? model.playheadPhase(beats, beatsPerBar) : -1); }
     if (model.dirty) {
         if (dirtySince === 0) { dirtySince = now; }
         else if (now - dirtySince > 500) { saveState(); model.dirty = false; dirtySince = 0; }
     }
 }
 
-// ---------- edition venant de l'editeur ----------
+// ---------- edition venant de la fenetre ----------
 function ui_curve(lane, hex) {
     var d = decodeCurve(String(hex), 4);
     lane = laneOf(lane);
     if (d) { model.setDrawnCurve(lane, d); }
 }
 function ui_points(lane, str) {
+    var pts;
     lane = laneOf(lane);
-    try { model.replacePoints(lane, decodePoints(String(str) === "-" ? "" : String(str))); }
-    catch (e) { model.say(e.message); }
+    try { pts = String(str) === "-" ? [] : decodePoints(String(str)); } catch (e) { model.say(e.message); return; }
+    try { if (pts.length >= 2) { model.replacePoints(lane, pts); } } catch (e2) { model.say(e2.message); }
 }
 
-// ---------- boutons de la barre d'outils ----------
+// boutons : btn <nom> [1]  (la valeur 0 = relachement : ignoree)
 function btn(name, value) {
     if (value !== undefined && Number(value) !== 1) { return; }
     var i = model.selected, l = model.lanes[i];
@@ -173,52 +177,35 @@ function btn(name, value) {
         case "vary": model.applyVariation(i, model.varyAmount); break;
         case "smooth": model.smoothCurve(i, model.smoothAmount); break;
         case "resume": model.resume(i); break;
-        case "tools": openTools(); break;
         default: break;
     }
-    if (l) { model.say(l.locked ? "Ligne " + (i + 1) + " verrouillee." : model.status); }
+    if (l && l.locked) { model.say("Ligne " + (i + 1) + " verrouillee."); }
 }
 function resume(i, v) { if (v === undefined || Number(v) === 1) { model.resume(laneOf(i)); } }
-// menu "Forme" : entree 0 = titre du menu, 1 a 6 = formes
-function shape_preset(index) {
-    var s = Number(index) - 1;
-    if (s >= 0 && s <= 5) { model.applyPreset(model.selected, s); }
-    sendTo(mobj("shapemenu"), ["set", 0]);
-}
+// forme de depart : 0 vague, 1 rampe +, 2 rampe -, 3 triangle, 4 douce, 5 paliers
+function set_preset(n) { n = Math.floor(Number(n)); if (n >= 0 && n <= 5) { model.applyPreset(model.selected, n); } }
 function vary_amount(v) { model.varyAmount = clamp(Number(v), 0, 100) * 0.01; }
 function smooth_amount(v) { model.smoothAmount = clamp(Number(v), 0, 100) * 0.01; }
 
-// ---------- fenetre "Outils" : nom, description, code, export ----------
+// ---------- page "Decrire / Code" ----------
 function joinArgs(args, from) { var out = [], k; for (k = from; k < args.length; k++) { out.push(String(args[k])); } return out.join(" "); }
-// [textedit] envoie "text mot mot ..." : le mot "text" de tete est retire s'il est present
-function text(which) {
-    var from = (arguments.length > 1 && String(arguments[1]) === "text") ? 2 : 1;
-    cache[String(which)] = joinArgs(arguments, from);
-}
+// text <desc|code|name> <texte encode>
+function text(which) { cache[String(which)] = decodeText(joinArgs(arguments, 1)); }
 
-function fillTools(m) {
+function fillTexts(m) {
     var l = m.lanes[m.selected];
-    sendTo(subobj("tools", "lane_title"), ["set", "Courbe " + (m.selected + 1)]);
-    sendTo(subobj("tools", "name_edit"), ["set", l.name]);
-    sendTo(subobj("tools", "desc_edit"), ["set", l.motionText]);
-    sendTo(subobj("tools", "code_edit"), ["set", l.script.replace(/\n/g, " ")]);
+    toUi("fill", enc(l.name), enc(l.motionText), enc(l.script));
 }
-function openTools() { fillTools(model); sendTo(mobj("tools"), ["open"]); }
-
-function toolsSay(interp, message) {
-    sendTo(subobj("tools", "interp"), ["set", interp]);
-    sendTo(subobj("tools", "msg"), ["set", message]);
-}
+function toolsSay(interp, message) { toUi("say", enc(interp), enc(message)); }
 function previewScript(compiled, mode, original, explanation) {
     var d = parseScript(compiled);
     if (d.bars < 0.25 || d.bars > 32 || Math.abs(d.bars * 4 - Math.round(d.bars * 4)) > 1e-6) {
         fail("Duree : 0.25 a 32 mesures, pas de 0.25.");
     }
     pendingMotion = { mode: mode, compiled: compiled, original: original };
-    sendTo(subobj("tools", "preview"), ["view", 0, encodeCurve(d), "-", 0, 0, d.bars, 0, "", 0]);
+    toUi("preview_curve", encodeCurve(d), d.bars);
     toolsSay(explanation, "Proposition : la courbe actuelle reste inchangee.");
 }
-function tools_btn(name, value) { if (Number(value) === 1) { tools(name); } }
 function tools(cmd) {
     var i = model.selected, l = model.lanes[i], r, t, ok;
     try {
@@ -235,11 +222,11 @@ function tools(cmd) {
             case "apply_code":
                 if (!pendingMotion || pendingMotion.mode !== (String(cmd) === "apply_desc" ? "desc" : "code")) { toolsSay("", "Previsualiser d'abord."); break; }
                 ok = model.applyScript(i, pendingMotion.compiled, pendingMotion.mode === "desc" ? pendingMotion.original : "");
-                if (ok.ok) { pendingMotion = null; fillTools(model); }
+                if (ok.ok) { pendingMotion = null; fillTexts(model); }
                 toolsSay("", ok.ok ? "Courbe appliquee." : ok.error);
                 break;
             case "rename":
-                model.rename(i, cache.name); toolsSay("", "Nom enregistre.");
+                model.rename(i, cache.name); fillTexts(model); toolsSay("", "Nom enregistre.");
                 break;
             case "export_mid":
                 pendingFile = "mid"; sendTo(mobj("savedlg"), ["bang"]);
@@ -274,7 +261,7 @@ function readFile(path) {
 function withExtension(path, ext) { return /\.[A-Za-z0-9]+$/.test(path) ? path : path + ext; }
 
 function dialog_path(path) {
-    var what = pendingFile, file = String(path), a = getLive(), bpb = beatsPerBar, bpm = 120, bytes, text, data;
+    var what = pendingFile, file = String(path), a = getLive(), bpb = beatsPerBar, bpm = 120, bytes, text2, data;
     pendingFile = "";
     if (file.length === 0 || file === "cancel") { return; }
     try {
@@ -287,10 +274,11 @@ function dialog_path(path) {
             file = withExtension(file, ".json");
             toolsSay("", writeFile(file, JSON.stringify(model.toSession(true)), true) ? "Session exportee : " + file : "Echec de l'export.");
         } else if (what === "session_load") {
-            text = readFile(file);
-            if (text === null) { toolsSay("", "Fichier illisible."); return; }
-            data = JSON.parse(text);
-            toolsSay("", model.fromSession(data, true) ? "Session importee." : "Ce fichier n'est pas une session Curve Editor M4L.");
+            text2 = readFile(file);
+            if (text2 === null) { toolsSay("", "Fichier illisible."); return; }
+            data = JSON.parse(text2);
+            if (model.fromSession(data, true)) { sync_all(); toolsSay("", "Session importee."); }
+            else { toolsSay("", "Ce fichier n'est pas une session Curve Editor M4L."); }
         }
     } catch (e) { toolsSay("", "Echec : " + e.message); }
 }

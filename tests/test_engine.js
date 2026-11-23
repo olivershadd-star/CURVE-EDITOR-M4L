@@ -14,6 +14,7 @@ function makeIo() {
         cc: (ch, cc, v) => rec.cc.push([ch, cc, v]),
         setParam: (i, key, v) => rec.params.push([i, key, v]),
         view: (i) => rec.views.push(i),
+        params: () => {},
         selected: (i) => rec.selected.push(i),
         manual: (i, f) => rec.manual.push([i, f]),
         status: (t) => rec.status.push(t) } };

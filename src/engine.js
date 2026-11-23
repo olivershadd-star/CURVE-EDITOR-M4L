@@ -37,7 +37,8 @@ function createModel(io) {
     function lane(i) { return m.lanes[clamp(Math.floor(Number(i)), 0, LANE_COUNT - 1)]; }
     function say(text) { m.status = text; io.status(text); }
     function touch() { m.dirty = true; }
-    function pushView(i) { if (i === m.selected) { io.view(i, m); } }
+    function pushView(i) { io.view(i, m); }
+    function pushParams(i) { io.params(i, m); }
     function setBars(i, bars) { m.lanes[i].params.bars = bars; io.setParam(i, "bars", bars); }
 
     m.say = say;
@@ -51,12 +52,14 @@ function createModel(io) {
         if (key === "bars") { v = Math.round(v * 4) / 4; if (v < 0.25) { v = 0.25; } }
         if (key === "cc" || key === "channel") {
             if (l[key] !== v) { l[key] = v; l.last = -1; l.st.valid = false; touch(); }
+            pushParams(idx);
             return;
         }
         if (l.params[key] === v) { return; }
         l.params[key] = v;
         if (key === "value" && m.armed) { l.manual = true; io.manual(idx, true); touch(); pushView(idx); }
-        if (key === "on") { l.last = -1; l.st.valid = false; }
+        if (key === "on") { l.last = -1; l.st.valid = false; touch(); pushView(idx); }
+        pushParams(idx);
         if (key === "bars" || key === "offset") { pushView(idx); }
     };
 
@@ -255,11 +258,11 @@ function createModel(io) {
                 for (key in DEFAULTS) { if (DEFAULTS.hasOwnProperty(key) && v.params[key] !== undefined) { m.setParam(k, key, v.params[key]); io.setParam(k, key, l.params[key]); } }
                 io.setParam(k, "cc", l.cc); io.setParam(k, "channel", l.channel);
             }
-            io.manual(k, l.manual);
+            io.manual(k, l.manual); io.params(k, m); io.view(k, m);
         }
         m.armed = wasArmed;
         m.selected = clamp(Math.floor(Number(data.selected)) || 0, 0, LANE_COUNT - 1);
-        io.selected(m.selected); io.view(m.selected, m);
+        io.selected(m.selected);
         return true;
     };
 
