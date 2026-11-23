@@ -1,36 +1,36 @@
-# Test du prototype Curve Editor M4L dans Live 12
+# Feuille de test — Curve Editor M4L
 
-Ce prototype n'a jamais été ouvert dans Max. Cette feuille sert à voir ce qui marche et à me dire précisément ce qui ne marche pas.
+Tout ce qui est calcul est testé hors de Live (courbes, CC, export MIDI, session). **Ce qui n'a jamais tourné dans Max** : le patch lui-même, l'éditeur, les dialogues et la sauvegarde avec le set. C'est ça qu'on teste ici.
 
-## Installation (chemin principal : copier-coller du patch)
+## Installation
 
-Le fichier `.amxd` est fabriqué par un script. L'en-tête d'un `.amxd` contient une somme de contrôle, et d'après les forums de Cycling '74 Live refuse les fichiers retouchés à la main : il sera donc **probablement refusé**. Tu peux l'essayer, mais le chemin sûr est celui-ci.
+1. Garder ensemble : `device/curve_engine.js`, `device/curve_ui.js`, `device/CurveEditor.amxd` (+ `.maxpat`).
+2. **Essai 1** : glisser `CurveEditor.amxd` sur une piste MIDI. Il doit s'afficher sans erreur.
+3. **Essai 2** (si Live refuse le .amxd) : mettre un *Max MIDI Effect* vide sur la piste, cliquer l'icône d'édition, dans Max tout sélectionner et supprimer, ouvrir `CurveEditor.maxpat` dans un éditeur de texte, tout copier, coller dans le patch Max, puis enregistrer l'appareil **dans le même dossier que les deux `.js`**.
+4. Ouvrir la console Max (fenêtre Max) : noter toute ligne rouge à l'ouverture.
 
-1. Mets `curve_lanes.js` dans un dossier à toi, par exemple
-   `Documents\Ableton\User Library\Presets\MIDI Effects\Max MIDI Effect\CurveEditor\`
-2. Dans Live, glisse un **Max MIDI Effect** vide (navigateur : MIDI Effects, Max MIDI Effect) sur la piste de ton instrument, **avant** l'instrument. Clique sur le bouton d'édition (Max s'ouvre).
-3. Dans Max, enregistre tout de suite l'appareil sous un nom (par exemple `CurveEditor`) **dans le même dossier que `curve_lanes.js`**.
-4. Ouvre `CurveEditor-proto.maxpat` dans Max (menu Fichier, Ouvrir), Ctrl+A, Ctrl+C.
-5. Reviens à la fenêtre de ton appareil, supprime les deux objets du modèle (`midiin` et `midiout`), Ctrl+V, puis enregistre (Ctrl+S).
-6. Passe en mode présentation (Ctrl+Alt+E) si l'interface ne s'affiche pas comme prévu.
+## À tester, dans l'ordre
 
-**Essai direct du `.amxd` (facultatif)** : mets `CurveEditor-proto.amxd` et `curve_lanes.js` dans le même dossier de la User Library et glisse l'appareil sur la piste. S'il s'affiche, tant mieux ; sinon, utilise le chemin ci-dessus.
+1. **Piste** : reste une piste MIDI (notes conservées), un instrument après l'appareil sonne toujours.
+2. **Affichage** : tout tient dans l'appareil (169 px de haut), tableau à gauche, éditeur à droite.
+3. **CC** : allumer *On* sur la ligne 1, lancer la lecture, voir les CC 20 sur canal 16 (un Monitor MIDI après l'appareil, ou mapper un paramètre).
+4. **Dessin** : trait libre dans l'éditeur → le CC suit la courbe. Mode *Points* : ajouter, déplacer, Alt + clic supprimer, courbure.
+5. **Le bouton de souris se relâche bien** (sinon le dessin « colle » après le clic).
+6. **Menus** : Forme, Grille, Pinceau, Segment. Boutons : Copier, Coller, Annuler, Verrou, Inverser, Varier, Lisser, Étirer, Pente.
+7. **Manuel** : changer la *Val.* d'une ligne → passe en MAN ; clic sur MAN → reprend la courbe.
+8. **Outils…** : la fenêtre s'ouvre. Description en français → *Prévisualiser* → *Appliquer*. Code avancé idem. Renommer.
+9. **Export .mid** et **export / import de session** : le chemin s'écrit-il bien (taper l'extension à la main si elle manque) ?
+10. **Enregistrer le set, fermer, rouvrir** : courbes, noms et réglages sont-ils revenus ?
+11. **Automation / mapping** d'un réglage du tableau dans Live.
 
-## Test
+## Points fragiles (hypothèses non vérifiées dans Max)
 
-1. **L'appareil s'affiche** : deux lignes avec on/off, CC, Canal, Mes., Min, Max et une courbe à dessiner.
-2. **Les notes passent** : fais jouer MLG (ou une note à la main) sur la piste. Serum doit sonner comme sans l'appareil.
-3. **Pas de message d'erreur** dans la fenêtre Max (si tu l'ouvres, le bouton d'édition puis la console) : s'il y en a, copie-les-moi.
-4. **Les CC partent** : lance la lecture de Live. Dans Serum, clique droit sur un macro, MIDI Learn, et la ligne 1 doit s'y assigner (CC 20, canal 1). Assigne la ligne 2 (CC 21) à un autre macro.
-5. **La courbe bouge le macro** : le macro doit suivre le dessin en boucle.
-6. **Dessine à la souris** dans l'éditeur : le mouvement du macro doit changer.
-7. **Durée** : mets 2 mesures ou 4 : la boucle doit ralentir.
-8. **Min / Max** : réduis l'étendue, le macro doit bouger moins.
-9. **Tempo** : change le tempo de Live, la boucle suit.
-10. **Arrêt** : arrête Live, plus aucun CC.
+- le `.amxd` généré peut être refusé par Live (voie 2 alors)
+- la sauvegarde des courbes dans le set passe par un `[dict]` branché sur les paramètres : si les courbes ne reviennent pas à la réouverture, dire lequel
+- un clic sur un champ texte de la fenêtre Outils envoie-t-il bien le texte au moteur ?
+- les chemins de fichier sur Mac (`Macintosh HD:/…`)
+- les sauts de ligne du code avancé sont reconstruits (`#` commentaires perdus)
 
-## À me dire
+## À me rapporter
 
-- Quelles étapes ont marché, lesquelles non.
-- Les messages de la console Max, tels quels.
-- Si le mouvement est saccadé, à quelle vitesse (7 bits seulement, 128 pas, comme Curve Mini).
+Pour chaque point qui ne marche pas : le numéro ci-dessus, ce qui s'affiche, et les **lignes rouges de la console Max**. Une capture d'écran de l'appareil aide beaucoup.

@@ -1,50 +1,42 @@
-<div align="center">
+# Curve Editor M4L
 
-# ANKS LABS / CURVE EDITOR M4L
-### MAX FOR LIVE · EFFET MIDI · ABLETON LIVE 12
+**Curve Mini en Max for Live** — ANKS Labs. C'est la « version Max » de [Curve Mini](https://github.com/olivershadd-star/Curve-Mini) (VST3) : un vrai **effet MIDI** pour Ableton Live 12. Il laisse passer le MIDI de la piste et y ajoute des CC dessinés par 8 courbes.
 
-![Status](https://img.shields.io/badge/STATUS-PROTOTYPE_NON_TESTE_DANS_LIVE-EF343E?style=for-the-badge&labelColor=10151E)
-![ANKS Labs](https://img.shields.io/badge/ANKS_LABS-AUDIO_DEVELOPMENT-19B9FF?style=for-the-badge&labelColor=10151E)
+Pourquoi : un VST3 déclaré instrument transforme la piste MIDI en piste audio. Un appareil Max for Live de type MIDI Effect garde le MIDI, se chaîne avec les autres effets MIDI et garde les notes.
 
-**BUILD. BREAK. REWIRE. LISTEN.**
+## Ce qui est repris de Curve Mini
 
-</div>
+- 8 lignes, chacune avec : On, canal (défaut 16), CC (défaut 20 à 27), min, max, mesures (0,25 à 32), phase, lissage (ms), profondeur, valeur manuelle (0 à 127) et son état AUTO / MAN (clic sur MAN = reprendre la courbe).
+- Éditeur de courbe : trait libre avec 3 pinceaux (rampe, triangle, sinus) ou points avec courbure, 7 formes de segment, sélection (Maj + glisser), étirer, pente, grille et aimantation.
+- Formes de départ (vague, rampes, triangle, douce, paliers), inverser, varier, lisser, copier, coller, annuler, verrouiller.
+- Fenêtre **Outils…** : nom de la ligne, **description en français** (aperçu puis appliquer), **code avancé** (`duration:`, `start:`, `ramp`, `hold`, `wave`, `saw`), export **.mid**, export / import de **session** (.json).
+- Les calculs sont portés du C++ et **vérifiés contre lui** : `tests/golden.json` (81 cas) est produit par le vrai code de Curve Mini.
 
----
+## Ce qui disparaît, car sans objet dans Live
 
-## CE QUE C'EST
+Choix du port MIDI, bouton Connecter, ENVOI, Assigner, transport autonome : l'appareil écrit directement dans la chaîne MIDI de la piste et suit la lecture de Live (position, tempo, signature).
 
-**Curve Editor M4L** est la version **Max for Live** de Curve Mini : un vrai **effet MIDI Ableton**. Il se pose avant l'instrument, laisse passer les notes (par exemple celles de MLG) et y ajoute des CC dessinés à la souris, en boucle sur 1 à 16 mesures, synchronisés sur le tempo de Live.
+## Installation
 
-Pourquoi Max for Live : un VST3 ne peut pas être un effet MIDI dans Live. Curve Mini (VST3) doit donc vivre sur sa propre piste et passer par loopMIDI. Ici, l'appareil se place dans la chaîne de la piste de l'instrument, sans routage.
+Voir `FEUILLE_TEST_LIVE_FR.md`. En deux mots : garder les trois fichiers de `device/` ensemble (`curve_engine.js`, `curve_ui.js`, plus l'appareil), puis glisser `CurveEditor.amxd` sur une piste MIDI. Si Live le refuse, la voie de secours est de coller `CurveEditor.maxpat` dans un « Max MIDI Effect » vide.
 
-## ÉTAT
+## Utilisation
 
-**Prototype à 2 lignes. Non testé dans Live** : le moteur est vérifié par des tests automatiques avec un faux Live, la structure du patch est contrôlée, mais l'appareil n'a jamais été ouvert dans Max ni dans Live. Voir [`FEUILLE_TEST_LIVE_FR.md`](FEUILLE_TEST_LIVE_FR.md).
+Les lignes sont **éteintes par défaut** : allumer *On* pour entendre les CC. Cliquer le numéro d'une ligne pour l'éditer. Les réglages du tableau sont des paramètres Live : automatisables et mappables. Les courbes sont enregistrées avec le set.
 
-| | Prototype |
-|---|---|
-| Lignes | 2 (CC 20 et 21 par défaut) |
-| Courbe | 16 points dessinés à la souris, lecture en boucle avec interpolation |
-| Réglages par ligne | on/off, CC, canal, durée en mesures (1 à 16), min, max |
-| Notes | passent sans modification (`midiin` vers `midiout`) |
-| Synchro | position de Live (`current_song_time`), signature de mesure lue dans Live |
+Éditeur : clic = ajouter un point ; glisser = déplacer ; Alt + clic = supprimer ; glisser la poignée au milieu d'un segment = courbure (double-clic = remise à zéro) ; Maj + glisser dans le vide = sélection ; Maj = sans aimantation.
 
-**Pas encore fait** (repris de Curve Mini) : 8 lignes, décalage, lissage, formes et tension des points, sauvegarde du dessin avec le set Live, export MIDI.
-
-## FICHIERS
-
-- `device/CurveEditor-proto.maxpat` : le patch, à coller dans un Max MIDI Effect vide (chemin sûr)
-- `device/CurveEditor-proto.amxd` : l'appareil généré par script, probablement refusé par Live (en-tête avec somme de contrôle)
-- `device/curve_lanes.js` : le moteur, **à garder dans le même dossier que l'appareil**
-- `tools/build_device.py` : régénère l'appareil
-- `tests/` : tests du moteur (Node) et contrôle du patch (Python)
+## Développement
 
 ```
-node tests/test_curve_lanes.js
-python3 -I tests/check_device.py
+tests/run_all.sh        # tests Node, construction de device/, contrôles statiques
 ```
 
----
+- `src/core.js` courbes, langage de mouvement, formules (ES5, testé contre le C++)
+- `src/engine.js` modèle des 8 lignes, tick, export MIDI, session
+- `src/glue.js` messages Max, Live API, fichiers
+- `src/ui.js` éditeur (`jsui`)
+- `tools/build_device.py` assemble `device/` et génère le patch ; `tools/check_device.py` le contrôle
+- `tools/golden_gen.cpp` regénère `tests/golden.json` à partir des sources de Curve Mini
 
-*ANKS Labs, indépendant, expérimental.*
+Le JS est en ES5 : c'est le seul JavaScript que lit le `[js]` de Max.
