@@ -113,7 +113,7 @@ def build_tools_patch():
     t.comment("Interprétation", [10, 250, 100, 20], present=[10, 214, 100, 18])
     t.comment(" ", [110, 250, 450, 20], present=[100, 214, 430, 34], varname="interp", textcolor=[0.8, 0.9, 1, 1])
     t.comment(" ", [10, 280, 450, 20], present=[10, 252, 520, 20], varname="msg", textcolor=[1, 0.85, 0.5, 1])
-    t.add("jsui", rect=[10, 310, 300, 100], present=[10, 276, 520, 110], inl=1, outl=2, outtypes=["", ""],
+    t.add("jsui", rect=[10, 310, 520, 110], present=[10, 276, 520, 110], inl=1, outl=2, outtypes=["", ""],
           filename="curve_ui.js", varname="preview")
     # l'apercu ne doit jamais modifier la courbe
     lb = t.obj("loadmess setpreview 1", [320, 310, 140, 22])
@@ -209,7 +209,7 @@ def build():
 
     # ---------- editeur de courbe ----------
     ED_X, ED_Y, ED_W, ED_H = 4, 39, 700, 104
-    editor = top.add("jsui", rect=[700, 200, 300, 100], present=[ED_X, ED_Y, ED_W, ED_H], inl=1, outl=2,
+    editor = top.add("jsui", rect=[700, 200, ED_W, ED_H], present=[ED_X, ED_Y, ED_W, ED_H], inl=1, outl=2,
                      outtypes=["", ""], filename="curve_ui.js", varname="editor")
 
     # ---------- onglets (un par ligne) ----------

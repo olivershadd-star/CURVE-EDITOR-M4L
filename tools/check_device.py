@@ -48,7 +48,8 @@ def check_patcher(p, label, width, height):
             x, y, w, h = box["presentation_rect"]
             if x < 0 or y < 0 or x + w > width or y + h > height:
                 err("%s : %s hors de la zone visible : %s" % (label, v or box.get("text"), box["presentation_rect"]))
-        # un objet qui envoie sans destination est suspect (sauf sorties finales)
+        if box["maxclass"] == "jsui" and box.get("presentation") and box["patching_rect"][2:] != box["presentation_rect"][2:]:
+            err("%s : jsui %s : tailles patching et presentation differentes (la souris serait decalee)" % (label, v))
     used_out = {(l["patchline"]["source"][0], l["patchline"]["source"][1]) for l in p["lines"]}
     used_in = {l["patchline"]["destination"][0] for l in p["lines"]}
     for ident, box in ids.items():
