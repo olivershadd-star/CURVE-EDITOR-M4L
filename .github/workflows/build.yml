@@ -6,11 +6,25 @@ on:
   pull_request:
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Lire le numéro de version
+        id: version
+        run: |
+          version=$(tr -d ' \r\n' < VERSION)
+          publish=false
+          if [ -z "$(git tag --list "v$version")" ] && [ "${{ github.event_name }}" != "pull_request" ] && [ "${{ github.ref }}" = "refs/heads/main" ]; then publish=true; fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "publish=$publish" >> "$GITHUB_OUTPUT"
+          echo "Version $version - publication : $publish"
       - uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -24,3 +38,27 @@ jobs:
         with:
           name: CurveEditor-M4L
           path: dist
+      - name: Préparer le ZIP numéroté
+        if: steps.version.outputs.publish == 'true'
+        run: |
+          name="CurveEditor-M4L-${{ steps.version.outputs.version }}"
+          mkdir -p "release/$name"
+          cp device/* README.md FEUILLE_TEST_LIVE_FR.md "release/$name/"
+          (cd release && zip -r "$name.zip" "$name")
+      - name: Publier la version (onglet Releases)
+        if: steps.version.outputs.publish == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.version }}
+          target_commitish: ${{ github.sha }}
+          name: Curve Editor M4L ${{ steps.version.outputs.version }}
+          prerelease: true
+          files: release/*.zip
+          body: |
+            **Curve Editor M4L — courbes d'automation MIDI CC pour Ableton, ANKS Labs, gratuit.** Version de test (Max for Live : Live Suite, ou Standard + Max for Live).
+
+            1. Télécharge `CurveEditor-M4L-${{ steps.version.outputs.version }}.zip` ci-dessous (rubrique *Assets*) et fais clic droit → **Extraire tout**.
+            2. Garde ensemble dans un même dossier `CurveEditor.amxd`, `curve_engine.js` et `curve_ui.js` (par exemple dans `Documents\Max 9\Library\`).
+            3. Dans Live, glisse `CurveEditor.amxd` sur une piste MIDI.
+
+            **EN —** Download `CurveEditor-M4L-${{ steps.version.outputs.version }}.zip`, extract it, keep the three files together and drop `CurveEditor.amxd` on a MIDI track.
